@@ -118,6 +118,12 @@ namespace GitHub.Internals
         /// <summary>
         /// Defines the operation to try.
         /// </summary>
+        /// <param name="candidate">The delegate to execute.</param>
+        void Try(int executionOrder, Func<Task<T>> candidate);
+
+        /// <summary>
+        /// Defines the operation to try.
+        /// </summary>
         /// <param name="name"></param>
         /// <param name="candidate">The delegate to execute.</param>
         void Try(string name, Func<Task<T>> candidate);
@@ -127,6 +133,12 @@ namespace GitHub.Internals
         /// </summary>
         /// <param name="control">The delegate to execute.</param>
         void Use(Func<Task<T>> control);
+
+        /// <summary>
+        /// Defines the operation to actually use.
+        /// </summary>
+        /// <param name="control">The delegate to execute.</param>
+        void Use(int executionOrder, Func<Task<T>> control);
 
         /// <summary>
         /// Defines a func used to compare results.

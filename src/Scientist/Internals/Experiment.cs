@@ -15,9 +15,9 @@ namespace GitHub.Internals
         private string _name;
         private int _concurrentTasks;
 
-        private Func<Task<T>> _control;
+        private OrderedBehavior<T> _control;
 
-        private readonly Dictionary<string, Func<Task<T>>> _candidates;
+        private readonly Dictionary<string, OrderedBehavior<T>> _candidates;
         private Func<T, TClean> _cleaner;
         private Func<T, T, bool> _comparison = DefaultComparison;
         private Func<Task> _beforeRun;
@@ -37,7 +37,7 @@ namespace GitHub.Internals
                 throw new ArgumentNullException("A result publisher must be specified", nameof(resultPublisher));
 
             _name = name;
-            _candidates = new Dictionary<string, Func<Task<T>>>();
+            _candidates = new Dictionary<string, OrderedBehavior<T>>();
             _enabled = enabled;
             _concurrentTasks = concurrentTasks;
             _resultPublisher = resultPublisher;
@@ -57,11 +57,25 @@ namespace GitHub.Internals
         public void Thrown(Action<Operation, Exception> block) =>
             _thrown = block;
 
+        public void Use(int executionOrder, Func<Task<T>> control) =>
+            _control = new OrderedBehavior<T>(control, executionOrder);
+
         public void Use(Func<Task<T>> control) =>
-            _control = control;
+            _control = new OrderedBehavior<T>(control);
 
         public void Use(Func<T> control) =>
-            _control = () => Task.FromResult(control());
+            _control = new OrderedBehavior<T>(control);
+
+        public void Try(int executionOrder, Func<Task<T>> candidate)
+        {
+            if (_candidates.ContainsKey(CandidateExperimentName))
+            {
+                throw new InvalidOperationException(
+                    "You have already added a default try. Give this candidate a new name with the Try(string, Func<Task<T>>) overload");
+            }
+
+            _candidates.Add(CandidateExperimentName, new OrderedBehavior<T>(candidate, executionOrder));
+        }
 
         public void Try(Func<Task<T>> candidate)
         {
@@ -70,7 +84,8 @@ namespace GitHub.Internals
                 throw new InvalidOperationException(
                     "You have already added a default try. Give this candidate a new name with the Try(string, Func<Task<T>>) overload");
             }
-            _candidates.Add(CandidateExperimentName, candidate);
+
+            _candidates.Add(CandidateExperimentName, new OrderedBehavior<T>(candidate));
         }
 
         public void Try(Func<T> candidate)
@@ -80,7 +95,7 @@ namespace GitHub.Internals
                 throw new InvalidOperationException(
                     "You have already added a default try. Give this candidate a new name with the Try(string, Func<Task<T>>) overload");
             }
-            _candidates.Add(CandidateExperimentName, () => Task.FromResult(candidate()));
+            _candidates.Add(CandidateExperimentName, new OrderedBehavior<T>(candidate));
         }
 
         public void Try(string name, Func<Task<T>> candidate)
@@ -90,7 +105,7 @@ namespace GitHub.Internals
                 throw new InvalidOperationException(
                     $"You already have a candidate named {name}. Provide a different name for this test.");
             }
-            _candidates.Add(name, candidate);
+            _candidates.Add(name, new OrderedBehavior<T>(candidate));
         }
 
         public void Try(string name, Func<T> candidate)
@@ -100,7 +115,7 @@ namespace GitHub.Internals
                 throw new InvalidOperationException(
                     $"You already have a candidate named {name}. Provide a different name for this test.");
             }
-            _candidates.Add(name, () => Task.FromResult(candidate()));
+            _candidates.Add(name, new OrderedBehavior<T>(candidate));
         }
 
         public void Ignore(Func<T, T, bool> block) =>

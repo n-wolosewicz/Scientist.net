@@ -13,11 +13,11 @@ namespace GitHub.Internals
     internal class ExperimentSettings<T, TClean>
     {
         public Func<Task> BeforeRun { get; set; }
-        public Dictionary<string, Func<Task<T>>> Candidates { get; set; }
+        public Dictionary<string, OrderedBehavior<T>> Candidates { get; set; }
         public Func<T, TClean> Cleaner { get; set; }
         public Func<T, T, bool> Comparator { get; set; }
         public Dictionary<string, dynamic> Contexts { get; set; }
-        public Func<Task<T>> Control { get; set; }
+        public OrderedBehavior<T> Control { get; set; }
         public Func<Task<bool>> Enabled { get; set; }
         public IEnumerable<Func<T, T, Task<bool>>> Ignores { get; set; }
         public string Name { get; set; }
@@ -26,5 +26,32 @@ namespace GitHub.Internals
         public bool ThrowOnMismatches { get; set; }
         public Action<Operation, Exception> Thrown { get; set; }
         public IResultPublisher ResultPublisher { get; set; }
+    }
+
+    internal class OrderedBehavior<T>
+    {
+        public Func<Task<T>> Behavior { get; }
+        public int? ExecutionOrder { get; }
+
+        public OrderedBehavior(Func<Task<T>> behavior)
+        {
+            Behavior = behavior;
+            ExecutionOrder = null;
+        }
+
+        public OrderedBehavior(Func<T> behavior) : this(() => Task.FromResult(behavior.Invoke()))
+        {
+
+        }
+
+        public OrderedBehavior(Func<Task<T>> behavior, int executionOrder) : this(behavior)
+        {
+            ExecutionOrder = executionOrder;
+        }
+
+        public OrderedBehavior(Func<T> behavior, int executionOrder) : this(behavior)
+        {
+            ExecutionOrder = executionOrder;
+        }
     }
 }

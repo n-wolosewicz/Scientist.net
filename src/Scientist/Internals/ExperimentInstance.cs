@@ -69,11 +69,13 @@ namespace GitHub.Internals
                 await BeforeRun().ConfigureAwait(false);
             }
 
-            // Randomize ordering...
+            // Ordering...
             NamedBehavior[] orderedBehaviors;
             lock (_random)
             {
-                orderedBehaviors = Behaviors.OrderBy(b => _random.Next()).ToArray();
+                orderedBehaviors = Behaviors
+                    .OrderBy(b => b.ExecutionOrder ?? _random.Next())
+                    .ToArray();
             }
 
             // Break tasks into batches of "ConcurrentTasks" size
@@ -171,16 +173,16 @@ namespace GitHub.Internals
 
         internal class NamedBehavior
         {
-            public NamedBehavior(string name, Func<T> behavior)
-                : this(name, () => Task.FromResult(behavior()))
-            {
-            }
+            //public NamedBehavior(string name, Func<T> behavior)
+            //    : this(name, () => Task.FromResult(behavior()))
+            //{
+            //}
 
-            public NamedBehavior(string name, Func<Task<T>> behavior)
-            {
-                Behavior = behavior;
-                Name = name;
-            }
+            //public NamedBehavior(string name, Func<Task<T>> behavior)
+            //{
+            //    Behavior = behavior;
+            //    Name = name;
+            //}
 
             /// <summary>
             /// Gets the behavior to execute during an experiment.
@@ -191,6 +193,15 @@ namespace GitHub.Internals
             /// Gets the name of the behavior.
             /// </summary>
             public string Name { get; }
+
+            public int? ExecutionOrder { get; }
+
+            public NamedBehavior(string name, OrderedBehavior<T> orderedBehavior)
+            {
+                Behavior = orderedBehavior.Behavior;
+                Name = name;
+                ExecutionOrder = orderedBehavior.ExecutionOrder;
+            }
         }
     }
 }
